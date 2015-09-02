@@ -18,7 +18,7 @@ class Edge:
         self.orig = orig
         self.dest = dest
         self.color = 'lightgray'
-        self.width = 1
+        self.width = 2
         self.length = 0
         self.qual = -1 
     
