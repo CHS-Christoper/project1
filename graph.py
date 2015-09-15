@@ -6,8 +6,8 @@ Created on Aug 16, 2015
 import node,edge
 import random,math
 import sys
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 # import matplotlib.animation as animation
 
@@ -26,6 +26,7 @@ class Graph:
         ''' dictionary of edges '''
         self.edgedic = None
         self.directed = False
+        self.bidirect = False
     
     ''' return the dictionary of nodes '''
     def get_nodes(self):
@@ -78,6 +79,55 @@ class Graph:
         self.nodes = {}
         for ix in range(node_count):
             self.nodes[ix] = node.Node(0.01+0.97*random.random(),0.01+0.97*random.random())
+            self.nodes[ix].idx = ix
+
+    ''' Generate a set of nodes forming a grid in the unit square the unit square 
+        Parameter is the number of nodes per row'''
+    def generate_bloc_nodes(self,nb_row):
+        self.nodes = {}
+        dist = 0.98/nb_row
+        start = 0.01
+        for iv in range(nb_row):
+            for ih in range(nb_row):
+                self.nodes[ih+iv*nb_row] = node.Node(start+iv*dist,start+ih*dist)
+                self.nodes[ih+iv*nb_row].idx = ih+iv*nb_row
+    
+    ''' Generate Grid Graph
+        Parameters: nb_row is the number of rows (equal to the number of columns) in the
+                    grid
+                    prob is the probability of an edge between two consecutive horizontal
+                    or vertical nodes
+                    directed indicate if the graph is directed or not
+    '''
+    def generate_grid_graph(self,nb_row,prob,directed = True):
+        self.directed = directed
+        self.bidirect = True
+        self.generate_bloc_nodes(nb_row)
+        for iv in range(nb_row):
+            for ih in range(nb_row):
+                ''' Check if there is a horizontal edge '''
+                if ih == 0 or ih == nb_row-2:
+                    proba = prob*2
+                else:
+                    proba = prob
+                if random.random() < proba and ih < nb_row-1:
+                    e = edge.Edge(self.nodes[ih+iv*nb_row],self.nodes[(ih+1)+iv*nb_row])
+                    self.edges.append(e)
+                    if directed:
+                        e = edge.Edge(self.nodes[(ih+1)+iv*nb_row],self.nodes[ih+iv*nb_row])
+                        self.edges.append(e)
+                ''' Check if there is a vertical edge '''
+                if iv == 0 or iv == nb_row-2:
+                    proba = prob*2
+                else:
+                    proba = prob
+                if random.random() < proba and iv < nb_row-1:
+                    e = edge.Edge(self.nodes[ih+iv*nb_row],self.nodes[ih+(iv+1)*nb_row])
+                    self.edges.append(e)
+                    if directed:
+                        e = edge.Edge(self.nodes[ih+(iv+1)*nb_row],self.nodes[ih+iv*nb_row])
+                        self.edges.append(e)
+        return
     
     ''' Generate a complete graph on node_count vertices '''
     def generate_complete_graph(self,node_count):
@@ -122,9 +172,24 @@ class Graph:
                     e.length = self.distance(self.nodes[ix2],self.nodes[ix1])
                     self.edges.append(e)
     
+    ''' Generate a geometric graph on node_count vertices:
+        two nodes are connected by an edge if their distance is less than max_dist
+    '''
+    def generate_geometric_graph(self,node_count,max_dist,directed = False):
+        if directed:
+            self.directed = True
+        self.generate_nodes(node_count)
+        self.edges = []
+        for ix1 in range(node_count):
+            for ix2 in range(ix1+1,node_count):
+                if self.distance(self.nodes[ix1],self.nodes[ix2]) < max_dist:
+                    e = edge.Edge(self.nodes[ix1],self.nodes[ix2])
+                    e.length = self.distance(self.nodes[ix1],self.nodes[ix2])
+                    self.edges.append(e)
+    
     ''' Compute adjacencies:
         find neighbors of each vertex '''
-    def compute_adjacencies(self,from_node = False):
+    def compute_adjacencies(self,from_node = True):
         for key in self.nodes.keys():
             self.nodes[key].neighs = []
         for e in self.edges:
@@ -146,21 +211,6 @@ class Graph:
         print '%d isolated nodes were removed' % isolated_count
         return
             
-    
-    ''' Generate a geometric graph on node_count vertices:
-        two nodes are connected by an edge if their distance is less than max_dist
-    '''
-    def generate_geometric_graph(self,node_count,max_dist,directed = False):
-        if directed:
-            self.directed = True
-        self.generate_nodes(node_count)
-        self.edges = []
-        for ix1 in range(node_count):
-            for ix2 in range(ix1+1,node_count):
-                if self.distance(self.nodes[ix1],self.nodes[ix2]) < max_dist:
-                    e = edge.Edge(self.nodes[ix1],self.nodes[ix2])
-                    e.length = self.distance(self.nodes[ix1],self.nodes[ix2])
-                    self.edges.append(e)
     
     ''' Compute the distance between two nodes '''
     def distance(self,nd1,nd2):
@@ -275,6 +325,13 @@ class Graph:
         return
 
     '''
+    Plot one point
+    '''
+    def plot_point(self,x,y,globalColor = 'blue'):
+        plt.plot(x, y, 'ro',color=globalColor)
+        return
+
+    '''
     Plot all nodes
     '''
     def plot_nodes(self,globalColor = None,txt = False):
@@ -297,7 +354,7 @@ class Graph:
             width = e.width
         else:
             width = globalWidth
-        if self.directed:
+        if self.directed and not self.bidirect:
             plt.arrow(orig.x,orig.y,dest.x-orig.x,dest.y-orig.y,color=col, 
                       head_width=0.01, head_length=0.02,
                       length_includes_head = True,linewidth=width)
@@ -318,6 +375,7 @@ class Graph:
     Draw graph
     '''
     def draw(self, msg = None, globalColor = None,txt = False, drawEdges = True):
+        plt.clf()
         if drawEdges:
             self.plot_edges(globalColor)
         self.plot_nodes(globalColor,txt)
